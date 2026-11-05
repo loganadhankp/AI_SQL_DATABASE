@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  # 1. Target Relational MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: ai_sql_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommerce_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sample_database/ecommerce.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    command: --default-authentication-plugin=mysql_native_password
+
+  # 2. FastAPI Backend & LangGraph Agent
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: ai_sql_backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - SAMPLE_DB_HOST=mysql
+      - SAMPLE_DB_PORT=3306
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mysql
+
+  # 3. React + Vite Frontend Client
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: ai_sql_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
